@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>생활 가계부</title>
+<meta name="description" content="수입 · 지출 · 저축 · 대출 · 예산을 한곳에서 관리">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="style.css?v=1">
+</head>
+<body>
+
+<!-- 설정 필요 -->
+<div id="setupScreen" class="center-box hidden">
+  <h1 class="app-title">생활 가계부</h1>
+  <p>클라우드 저장을 쓰려면 firebase-config.js 에<br>Firebase 설정값을 입력해야 합니다. (README.md 참고)</p>
+  <button class="btn block" onclick="startLocal()">이 기기에만 저장하고 사용하기</button>
+  <p class="muted small">이 기기 브라우저에만 저장됩니다. 나중에 설정 탭의 백업 파일로 옮길 수 있습니다.</p>
+</div>
+
+<!-- 로그인 -->
+<div id="loginScreen" class="center-box hidden">
+  <h1 class="app-title">생활 가계부</h1>
+  <p>등록된 구글 계정으로 로그인해야<br>사용할 수 있습니다.</p>
+  <div id="inappNotice" class="notice hidden">
+    카카오톡 등 앱 안의 브라우저에서는 구글 로그인이 되지 않습니다.<br>
+    오른쪽 위 메뉴에서 <b>다른 브라우저로 열기</b>(크롬, 사파리)를 눌러 주세요.
+  </div>
+  <button class="btn primary block" onclick="signIn()">구글 계정으로 로그인</button>
+</div>
+
+<!-- 권한 없음 -->
+<div id="deniedScreen" class="center-box hidden">
+  <h1>접근 권한이 없습니다</h1>
+  <p><b id="deniedEmail"></b><br>이 계정으로는 사용할 수 없습니다.</p>
+  <button class="btn block" onclick="firebase.auth().signOut()">다른 계정으로 로그인</button>
+</div>
+
+<!-- 앱 -->
+<div id="appScreen" class="hidden">
+  <header class="top">
+    <div class="in">
+      <h1 class="app-title">생활 가계부</h1>
+      <div class="month-nav" id="monthNav">
+        <button class="icon-btn" onclick="moveMonth(-1)" aria-label="이전 달">‹</button>
+        <span id="monthLabel"></span>
+        <button class="icon-btn" onclick="moveMonth(1)" aria-label="다음 달">›</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 홈 -->
+  <div class="wrap" id="tab-home">
+    <div class="card sum-card">
+      <div class="sum-main">
+        <span class="muted">이번 달 남은 돈</span>
+        <b id="sumLeft">0원</b>
+        <small class="muted">수입 − 지출 − 저축 − 대출상환</small>
+      </div>
+      <div class="sum-grid">
+        <div><span class="dot income"></span>수입<b id="sumIncome">0</b></div>
+        <div><span class="dot expense"></span>지출<b id="sumExpense">0</b></div>
+        <div><span class="dot saving"></span>저축<b id="sumSaving">0</b></div>
+        <div><span class="dot loan"></span>대출상환<b id="sumLoan">0</b></div>
+      </div>
+    </div>
+
+    <div class="card notice-card hidden" id="recurNotice"></div>
+
+    <div class="card">
+      <h2>자산 현황</h2>
+      <div class="asset-row"><span>저축 잔액 합계</span><b class="c-saving" id="assetSaving">0원</b></div>
+      <div class="asset-row"><span>대출 잔액 합계</span><b class="c-loan" id="assetLoan">0원</b></div>
+      <div class="asset-row total"><span>순자산 (저축 − 대출)</span><b id="assetNet">0원</b></div>
+    </div>
+
+    <div class="card">
+      <h2>분류별 지출 <span class="muted small" id="budgetTotalLabel"></span></h2>
+      <ul class="bars" id="catBars"></ul>
+    </div>
+
+    <div class="card">
+      <h2>최근 6개월</h2>
+      <div class="legend"><span><i class="dot income"></i>수입</span><span><i class="dot expense"></i>지출</span><span><i class="dot saving"></i>저축</span></div>
+      <div class="trend" id="trend"></div>
+    </div>
+  </div>
+
+  <!-- 내역 -->
+  <div class="wrap hidden" id="tab-list">
+    <div class="card">
+      <div class="chips" id="typeChips">
+        <button data-t="" class="on">전체</button>
+        <button data-t="income">수입</button>
+        <button data-t="expense">지출</button>
+        <button data-t="saving">저축</button>
+        <button data-t="loan">대출상환</button>
+      </div>
+      <input id="listSearch" class="input" type="search" placeholder="메모·분류로 찾기" oninput="renderList()">
+      <div class="list-sum" id="listSum"></div>
+    </div>
+    <div id="txList"></div>
+  </div>
+
+  <!-- 저축·대출 -->
+  <div class="wrap hidden" id="tab-assets">
+    <div class="card">
+      <h2>저축 <button class="btn sm" onclick="openSaving()">+ 저축 통장 추가</button></h2>
+      <ul class="list" id="savingList"></ul>
+    </div>
+    <div class="card">
+      <h2>대출 <button class="btn sm" onclick="openLoan()">+ 대출 추가</button></h2>
+      <ul class="list" id="loanList"></ul>
+    </div>
+  </div>
+
+  <!-- 계획: 고정 항목 / 예산 -->
+  <div class="wrap hidden" id="tab-plan">
+    <div class="card">
+      <h2>매달 고정 항목 <button class="btn sm" onclick="openRecur()">+ 추가</button></h2>
+      <p class="muted small">급여, 관리비, 보험료, 적금, 대출 상환처럼 매달 같은 날 나가고 들어오는 항목입니다. 홈 화면에서 한 번에 내역으로 반영할 수 있습니다.</p>
+      <ul class="list" id="recurList"></ul>
+      <div class="asset-row total" id="recurSum"></div>
+    </div>
+    <div class="card">
+      <h2>월 예산 <button class="btn sm" onclick="saveBudget()">저장</button></h2>
+      <p class="muted small">지출 분류별 한 달 예산입니다. 비워 두면 예산 없음.</p>
+      <div id="budgetForm"></div>
+    </div>
+  </div>
+
+  <!-- 설정 -->
+  <div class="wrap hidden" id="tab-set">
+    <div class="card">
+      <h2>분류 관리</h2>
+      <div class="field"><label>수입 분류 <small>한 줄에 하나씩</small></label><textarea id="setIncomeCats" class="input" rows="5"></textarea></div>
+      <div class="field"><label>지출 분류 <small>한 줄에 하나씩</small></label><textarea id="setExpenseCats" class="input" rows="8"></textarea></div>
+      <div class="field"><label>결제 수단 <small>한 줄에 하나씩</small></label><textarea id="setMethods" class="input" rows="4"></textarea></div>
+      <button class="btn primary block" onclick="saveSettings()">분류 저장</button>
+    </div>
+    <div class="card">
+      <h2>내보내기 · 백업</h2>
+      <button class="btn block" onclick="exportCSV()">전체 내역 엑셀(CSV)로 내려받기</button>
+      <button class="btn block" onclick="exportJSON()">백업 파일(JSON) 내려받기</button>
+      <button class="btn block" onclick="$('restoreFile').click()">백업 파일로 복원</button>
+      <input type="file" id="restoreFile" accept=".json,application/json" class="hidden" onchange="restoreJSON(this)">
+      <p class="muted small">복원하면 지금 저장된 내용이 백업 파일 내용으로 모두 바뀝니다.</p>
+    </div>
+    <div class="card">
+      <h2>계정</h2>
+      <p class="muted" id="whoami"></p>
+      <button class="btn block" id="logoutBtn" onclick="logout()">로그아웃</button>
+    </div>
+  </div>
+
+  <button class="fab" onclick="openTx()" aria-label="내역 추가">+</button>
+
+  <nav class="tabbar">
+    <button data-tab="home" class="on">홈</button>
+    <button data-tab="list">내역</button>
+    <button data-tab="assets">저축·대출</button>
+    <button data-tab="plan">고정·예산</button>
+    <button data-tab="set">설정</button>
+  </nav>
+</div>
+
+<!-- 입력 창 -->
+<div class="sheet-bg hidden" id="sheetBg">
+  <div class="sheet">
+    <div class="sheet-hd"><h3 id="sheetTitle"></h3><button class="icon-btn" onclick="closeSheet()" aria-label="닫기">×</button></div>
+    <div id="sheetBody"></div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="firebase-config.js?v=1"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="app.js?v=1"></script>
+</body>
+</html>

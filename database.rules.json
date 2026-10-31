@@ -1,0 +1,13 @@
+{
+  "rules": {
+    "ledger": {
+      ".read": "auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase() == 'cgn210@cgnmail.net'",
+      ".write": "auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase() == 'cgn210@cgnmail.net'",
+      "tx": {
+        "$id": {
+          ".validate": "newData.child('date').isString() && newData.child('type').isString() && newData.child('amount').isNumber()"
+        }
+      }
+    }
+  }
+}
