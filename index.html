@@ -15,7 +15,7 @@
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
-<link rel="stylesheet" href="style.css?v=3">
+<link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
 
@@ -55,6 +55,9 @@
         <span id="monthLabel"></span>
         <button class="icon-btn" onclick="moveMonth(1)" aria-label="다음 달">›</button>
       </div>
+      <button class="icon-btn set-btn" id="setBtn" onclick="setTab('set')" aria-label="설정">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
     </div>
   </header>
 
@@ -160,6 +163,36 @@
     </div>
   </div>
 
+  <!-- 연간 통계 -->
+  <div class="wrap hidden" id="tab-stat">
+    <div class="card sum-card">
+      <div class="sum-main">
+        <span class="muted" id="statTitle"></span>
+        <b id="statLeft">0원</b>
+        <small class="muted">수입 − 지출 − 저축 − 대출상환</small>
+      </div>
+      <div class="sum-grid stat-grid" id="statGrid"></div>
+      <div id="statAvg" style="border-top:1px solid var(--line);margin-top:12px;padding-top:8px"></div>
+    </div>
+    <div class="card">
+      <h2>월별 추이</h2>
+      <div class="legend"><span><i class="dot income"></i>수입</span><span><i class="dot expense"></i>지출</span><span><i class="dot saving"></i>저축</span></div>
+      <div class="trend" id="statTrend"></div>
+    </div>
+    <div class="card">
+      <h2>월별 합계 <small class="muted small">옆으로 밀어 보기 · 월을 누르면 그 달 내역</small></h2>
+      <div class="tbl-wrap" id="statTable"></div>
+    </div>
+    <div class="card">
+      <h2>지출 분류별 합계</h2>
+      <div id="statExp"></div>
+    </div>
+    <div class="card">
+      <h2>수입 분류별 합계</h2>
+      <div id="statInc"></div>
+    </div>
+  </div>
+
   <!-- 설정 -->
   <div class="wrap hidden" id="tab-set">
     <div class="card">
@@ -167,7 +200,10 @@
       <div class="field"><label>수입 분류 <small>한 줄에 하나씩</small></label><textarea id="setIncomeCats" class="input" rows="5"></textarea></div>
       <div class="field"><label>지출 분류 <small>한 줄에 하나씩</small></label><textarea id="setExpenseCats" class="input" rows="8"></textarea></div>
       <div class="field"><label>결제 수단 <small>한 줄에 하나씩</small></label><textarea id="setMethods" class="input" rows="4"></textarea></div>
+      <div class="field"><label>저축 종류 <small>한 줄에 하나씩</small></label><textarea id="setSavingKinds" class="input" rows="5"></textarea></div>
+      <div class="field"><label>대출 유형 <small>한 줄에 하나씩</small></label><textarea id="setLoanKinds" class="input" rows="5"></textarea></div>
       <button class="btn primary block" onclick="saveSettings()">분류 저장</button>
+      <p class="muted small">이름을 바꾸거나 지워도 이미 기록된 내역의 분류는 그대로 남습니다.</p>
     </div>
     <div class="card">
       <h2>내보내기 · 백업</h2>
@@ -192,7 +228,7 @@
     <button data-tab="assets">저축</button>
     <button data-tab="loan">대출</button>
     <button data-tab="plan">고정·예산</button>
-    <button data-tab="set">설정</button>
+    <button data-tab="stat">통계</button>
   </nav>
 </div>
 
@@ -210,6 +246,6 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="app.js?v=3"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>

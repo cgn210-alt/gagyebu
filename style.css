@@ -182,5 +182,21 @@ h4.sec { font-size: 14.5px; margin: 18px 0 8px; }
 .tbl td { padding: 7px 5px; text-align: right; border-top: 1px solid var(--line); }
 .tbl th:first-child, .tbl td:first-child { text-align: center; }
 
+/* 연간 통계 */
+.top .in .set-btn { color: var(--muted); margin-left: -4px; }
+.top .in .set-btn.on { color: var(--pri); }
+.stat-grid { grid-template-columns: 1fr !important; gap: 8px !important; }
+.stat-grid b { text-align: right; }
+.stat-grid b small { display: block; font-size: 11.5px; font-weight: 600; }
+small.up { color: var(--expense); } small.down { color: var(--saving); }
+.track i.in { background: var(--income); }
+.stat-tbl tbody tr { cursor: pointer; }
+.stat-tbl tbody tr:hover { background: #f7f8fa; }
+.stat-tbl tr.dim td { color: #c3c7cf; }
+.stat-tbl tfoot td { font-weight: 700; background: #f7f8fa; border-top: 2px solid var(--line); }
+.stat-tbl td:first-child, .stat-tbl th:first-child { text-align: center; position: sticky; left: 0; background: #fff; z-index: 1; box-shadow: 1px 0 0 var(--line); }
+.stat-tbl th:first-child { background: #f7f8fa; z-index: 2; }
+.stat-tbl tfoot td:first-child { background: #f7f8fa; }
+
 .toast { position: fixed; left: 50%; bottom: 150px; transform: translateX(-50%); background: rgba(30,34,44,.92); color: #fff; padding: 10px 16px; border-radius: 10px; font-size: 14px; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 50; }
 .toast.show { opacity: 1; }

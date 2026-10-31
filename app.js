@@ -69,7 +69,9 @@ function setts() {
   return {
     incomeCats: arr(s.incomeCats).length ? arr(s.incomeCats) : DEFAULT_SETTINGS.incomeCats,
     expenseCats: arr(s.expenseCats).length ? arr(s.expenseCats) : DEFAULT_SETTINGS.expenseCats,
-    methods: arr(s.methods).length ? arr(s.methods) : DEFAULT_SETTINGS.methods
+    methods: arr(s.methods).length ? arr(s.methods) : DEFAULT_SETTINGS.methods,
+    savingKinds: arr(s.savingKinds).length ? arr(s.savingKinds) : SAVING_KINDS,
+    loanKinds: arr(s.loanKinds).length ? arr(s.loanKinds) : LOAN_KINDS
   };
 }
 function txs() { return items(D.tx); }
@@ -244,19 +246,21 @@ function enterApp() {
 }
 function setTab(t) {
   curTab = t;
-  ['home', 'list', 'assets', 'loan', 'plan', 'set'].forEach(function (x) { $('tab-' + x).classList.toggle('hidden', x !== t); });
+  ['home', 'list', 'assets', 'loan', 'plan', 'stat', 'set'].forEach(function (x) { $('tab-' + x).classList.toggle('hidden', x !== t); });
   document.querySelectorAll('.tabbar button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-tab') === t); });
-  $('monthNav').style.visibility = (t === 'home' || t === 'list' || t === 'loan') ? 'visible' : 'hidden';
+  $('monthNav').style.visibility = (t === 'home' || t === 'list' || t === 'loan' || t === 'stat') ? 'visible' : 'hidden';
+  $('setBtn').classList.toggle('on', t === 'set');
+  $('monthLabel').textContent = t === 'stat' ? cur.slice(0, 4) + '년' : monthLabel(cur);
   if (t === 'set') fillSettingsForm();
   if (t === 'plan') renderBudgetForm();
   window.scrollTo(0, 0);
 }
-function moveMonth(k) { cur = addMonth(cur, k); renderAll(); }
+function moveMonth(k) { cur = addMonth(cur, curTab === 'stat' ? k * 12 : k); renderAll(); }
 
 /* ---------- 화면 그리기 ---------- */
 function renderAll() {
-  $('monthLabel').textContent = monthLabel(cur);
-  renderHome(); renderList(); renderAssets(); renderLoans(); renderPlan();
+  $('monthLabel').textContent = curTab === 'stat' ? cur.slice(0, 4) + '년' : monthLabel(cur);
+  renderHome(); renderList(); renderAssets(); renderLoans(); renderPlan(); renderStats();
 }
 
 function renderHome() {
@@ -425,6 +429,67 @@ function renderLoans() {
 }
 function payLoan(id, m) {
   openTx(null, { type: 'loan', loanId: id, date: loanDue(Object.assign({ id: id }, D.loans[id]), m) });
+}
+
+/* ---------- 연간 통계 ---------- */
+function yearTx(y) { return txs().filter(function (t) { return String(t.date).slice(0, 4) === y; }); }
+function catTable(list, type, total, nMon) {
+  var by = {};
+  list.forEach(function (t) { if (t.type === type) by[t.cat || '미분류'] = (by[t.cat || '미분류'] || 0) + num(t.amount); });
+  var cats = Object.keys(by).sort(function (a, b) { return by[b] - by[a]; });
+  if (!cats.length) return '<div class="empty">기록이 없습니다.</div>';
+  return '<ul class="bars">' + cats.map(function (c) {
+    var p = total ? by[c] / total * 100 : 0;
+    return '<li><div class="bl"><span>' + esc(c) + ' <small>' + p.toFixed(1) + '% · 월평균 ' + won(by[c] / nMon) + '</small></span><b>' + won(by[c]) + '</b></div>' +
+      '<div class="track"><i class="' + (type === 'income' ? 'in' : '') + '" style="width:' + p.toFixed(1) + '%"></i></div></li>';
+  }).join('') + '</ul>';
+}
+function renderStats() {
+  var yr = cur.slice(0, 4), py = String(+yr - 1), i, ms = [];
+  for (i = 1; i <= 12; i++) ms.push(yr + '-' + pad(i));
+  var mon = ms.map(function (m) { var s = sums(monthTx(m)); s.m = m; return s; });
+  var list = yearTx(yr), tot = sums(list);
+  // 전년 비교는 같은 기간끼리 (올해면 1월~이번 달)
+  var lim = yr === today().slice(0, 4) ? today().slice(5, 7) : '12';
+  var prev = sums(yearTx(py).filter(function (t) { return String(t.date).slice(5, 7) <= lim; }));
+  var nMon = mon.filter(function (x) { return x.income || x.expense || x.saving || x.loan; }).length || 1;
+  // good: 늘어나면 좋은 항목(수입·저축)은 초록, 지출·상환은 늘면 빨강
+  function diff(a, b, good) {
+    if (!b) return '';
+    var d = (a - b) / b * 100;
+    return '<small class="' + ((d > 0) === !!good ? 'down' : 'up') + '">전년 ' + (lim === '12' ? '' : '같은 기간 ') + '대비 ' + (d > 0 ? '+' : '') + d.toFixed(1) + '%</small>';
+  }
+  $('statTitle').textContent = yr + '년 합계';
+  $('statLeft').textContent = won(tot.left);
+  $('statLeft').className = tot.left < 0 ? 'c-expense' : '';
+  $('statGrid').innerHTML =
+    '<div><span class="dot income"></span>수입<b>' + won(tot.income) + diff(tot.income, prev.income, true) + '</b></div>' +
+    '<div><span class="dot expense"></span>지출<b>' + won(tot.expense) + diff(tot.expense, prev.expense) + '</b></div>' +
+    '<div><span class="dot saving"></span>저축<b>' + won(tot.saving) + diff(tot.saving, prev.saving, true) + '</b></div>' +
+    '<div><span class="dot loan"></span>대출상환<b>' + won(tot.loan) + diff(tot.loan, prev.loan) + '</b></div>';
+  $('statAvg').innerHTML =
+    '<div class="asset-row"><span>월평균 수입 <small>(기록 있는 ' + nMon + '개월 기준)</small></span><b>' + won(tot.income / nMon) + '</b></div>' +
+    '<div class="asset-row"><span>월평균 지출</span><b>' + won(tot.expense / nMon) + '</b></div>' +
+    '<div class="asset-row"><span>저축률 <small>(저축 ÷ 수입)</small></span><b>' + (tot.income ? (tot.saving / tot.income * 100).toFixed(1) + '%' : '-') + '</b></div>';
+
+  var tmax = Math.max.apply(null, mon.map(function (d) { return Math.max(d.income, d.expense, Math.max(0, d.saving)); }).concat([1]));
+  $('statTrend').innerHTML = mon.map(function (d) {
+    function col(k) { var v = Math.max(0, d[k]); return '<i class="' + k + '" style="height:' + (v / tmax * 100).toFixed(1) + '%" title="' + TYPE_NAME[k] + ' ' + won(v) + '"></i>'; }
+    return '<div class="m' + (d.m === today().slice(0, 7) ? ' cur' : '') + '"><div class="cols">' + col('income') + col('expense') + col('saving') + '</div><div class="lb">' + (+d.m.slice(5)) + '</div></div>';
+  }).join('');
+
+  $('statTable').innerHTML = '<table class="tbl stat-tbl"><thead><tr><th>월</th><th>수입</th><th>지출</th><th>저축</th><th>대출상환</th><th>남은 돈</th></tr></thead><tbody>' +
+    mon.map(function (d) {
+      var empty = !(d.income || d.expense || d.saving || d.loan);
+      return '<tr class="' + (empty ? 'dim' : '') + '" onclick="cur=\'' + d.m + '\';renderAll();setTab(\'list\')"><td>' + (+d.m.slice(5)) + '월</td>' +
+        '<td class="c-income">' + comma(d.income) + '</td><td class="c-expense">' + comma(d.expense) + '</td><td class="c-saving">' + comma(d.saving) + '</td><td class="c-loan">' + comma(d.loan) + '</td>' +
+        '<td class="' + (d.left < 0 ? 'c-expense' : '') + '">' + comma(d.left) + '</td></tr>';
+    }).join('') +
+    '</tbody><tfoot><tr><td>합계</td><td>' + comma(tot.income) + '</td><td>' + comma(tot.expense) + '</td><td>' + comma(tot.saving) + '</td><td>' + comma(tot.loan) + '</td><td>' + comma(tot.left) + '</td></tr>' +
+    '<tr><td>월평균</td><td>' + comma(tot.income / nMon) + '</td><td>' + comma(tot.expense / nMon) + '</td><td>' + comma(tot.saving / nMon) + '</td><td>' + comma(tot.loan / nMon) + '</td><td>' + comma(tot.left / nMon) + '</td></tr></tfoot></table>';
+
+  $('statExp').innerHTML = catTable(list, 'expense', tot.expense, nMon);
+  $('statInc').innerHTML = catTable(list, 'income', tot.income, nMon);
 }
 
 function recurDesc(r) {
@@ -624,7 +689,7 @@ function openSaving(id) {
     if (hist.length) h += '<div class="field"><label>최근 기록</label><ul class="list">' + hist.slice(0, 8).map(txRow).join('') + '</ul></div>';
   }
   h += textField('svName', '이름', s.name, 'text', '예: 주택청약, 비상금 통장');
-  h += '<div class="row2"><div class="field"><label>종류</label><select id="svKind" class="input">' + opts(SAVING_KINDS, s.kind) + '</select></div>' + textField('svBank', '은행·기관', s.bank) + '</div>';
+  h += '<div class="row2"><div class="field"><label>종류</label><select id="svKind" class="input">' + opts(setts().savingKinds, s.kind) + '</select></div>' + textField('svBank', '은행·기관', s.bank) + '</div>';
   h += moneyField('svInitial', '시작 잔액', s.initial, '이 앱을 쓰기 시작할 때 통장에 이미 있던 금액');
   h += '<div class="row2">' + moneyField('svMonthly', '매달 넣는 금액', s.monthly) + moneyField('svTarget', '목표 금액', s.target) + '</div>';
   h += textField('svMaturity', '만기일', s.maturity, 'date');
@@ -691,7 +756,7 @@ function editLoan(id) {
   var l = id ? Object.assign({ id: id }, D.loans[id]) : { method: 'equal', rateType: 'fixed', kind: '주택담보대출', start: today() };
   var h = '';
   h += textField('lnName', '이름', l.name, 'text', '예: 아파트 주택담보대출');
-  h += '<div class="row2"><div class="field"><label>대출 유형</label><select id="lnKind" class="input">' + opts(LOAN_KINDS, l.kind || '기타') + '</select></div>' + textField('lnLender', '은행·기관', l.lender) + '</div>';
+  h += '<div class="row2"><div class="field"><label>대출 유형</label><select id="lnKind" class="input">' + opts(setts().loanKinds, l.kind || '기타') + '</select></div>' + textField('lnLender', '은행·기관', l.lender) + '</div>';
   h += moneyField('lnPrincipal', '빌린 원금', l.principal, '이미 일부 갚은 대출은, 앱을 쓰기 시작하는 시점의 남은 원금을 넣고 시작일·기간도 그 시점 기준으로 넣으면 됩니다.');
   h += '<h4 class="sec">금리</h4>';
   h += '<div class="row2"><div class="field"><label>금리 방식</label><select id="lnRateType" class="input">' +
@@ -807,13 +872,15 @@ function fillSettingsForm() {
   $('setIncomeCats').value = s.incomeCats.join('\n');
   $('setExpenseCats').value = s.expenseCats.join('\n');
   $('setMethods').value = s.methods.join('\n');
+  $('setSavingKinds').value = s.savingKinds.join('\n');
+  $('setLoanKinds').value = s.loanKinds.join('\n');
 }
 function lines(id) {
   var seen = {};
   return $(id).value.split('\n').map(function (x) { return x.trim(); }).filter(function (x) { if (!x || seen[x]) return false; seen[x] = 1; return true; });
 }
 function saveSettings() {
-  var o = { incomeCats: lines('setIncomeCats'), expenseCats: lines('setExpenseCats'), methods: lines('setMethods') };
+  var o = { incomeCats: lines('setIncomeCats'), expenseCats: lines('setExpenseCats'), methods: lines('setMethods'), savingKinds: lines('setSavingKinds'), loanKinds: lines('setLoanKinds') };
   if (!o.incomeCats.length || !o.expenseCats.length) { alert('수입·지출 분류는 하나 이상 있어야 합니다.'); return; }
   save('settings', o).then(function () { fillSettingsForm(); toast('분류를 저장했습니다'); });
 }
