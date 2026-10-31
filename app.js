@@ -243,8 +243,11 @@ function enterApp() {
   });
   fillSettingsForm();
   renderAll();
+  history.replaceState({ tab: curTab }, '');
 }
-function setTab(t) {
+// fromPop: 뒤로 가기로 돌아온 경우 (기록을 새로 쌓지 않음)
+function setTab(t, fromPop) {
+  if (!fromPop && t !== curTab) history.pushState({ tab: t }, '');
   curTab = t;
   ['home', 'list', 'assets', 'loan', 'plan', 'stat', 'set'].forEach(function (x) { $('tab-' + x).classList.toggle('hidden', x !== t); });
   document.querySelectorAll('.tabbar button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-tab') === t); });
@@ -527,6 +530,32 @@ function saveBudget() {
   save('budget', b).then(function () { toast('예산을 저장했습니다'); });
 }
 
+/* ---------- 뒤로 가기 ----------
+   탭 이동, 입력 창 열기, 창 안에서 다른 창으로 이동(예: 대출 상세 → 상환 기록), 선택 창 열기마다
+   브라우저 기록을 하나씩 쌓아서, 휴대폰 뒤로 가기 버튼이 직전 화면으로 돌아가게 함 */
+var _sheetStack = [];   // 창 안에서 이동했을 때 돌아갈 이전 창을 다시 여는 함수들
+var _sheetCur = null;   // 지금 열린 창을 다시 여는 함수
+var _reopening = false; // 뒤로 가기로 이전 창을 다시 그리는 중
+var _ignorePop = 0;     // 앱이 직접 기록을 되돌릴 때 생기는 popstate 는 무시
+function sheetOpen() { return !$('sheetBg').classList.contains('hidden'); }
+function pickerOpen() { return $('pickBg') && !$('pickBg').classList.contains('hidden'); }
+// 창을 여는 함수들(openTx, openSaving, openLoan, editLoan, openRecur)이 맨 처음 부름
+function enterSheet(reopen) {
+  if (!sheetOpen()) { _sheetStack = []; history.pushState({ tab: curTab, s: 1 }, ''); }
+  else if (!_reopening) { _sheetStack.push(_sheetCur); history.pushState({ tab: curTab, s: _sheetStack.length + 1 }, ''); }
+  _sheetCur = reopen;
+}
+window.addEventListener('popstate', function (e) {
+  if (_ignorePop) { _ignorePop--; return; }
+  if (pickerOpen()) { $('pickBg').classList.add('hidden'); return; }
+  if (sheetOpen()) {
+    if (_sheetStack.length) { var fn = _sheetStack.pop(); _reopening = true; fn(); _reopening = false; }
+    else hideSheet();
+    return;
+  }
+  setTab((e.state && e.state.tab) || 'home', true);
+});
+
 /* ---------- 입력 창 ---------- */
 function openSheet(title, html) {
   $('sheetTitle').textContent = title;
@@ -535,7 +564,19 @@ function openSheet(title, html) {
   $('sheetBg').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
 }
-function closeSheet() { $('sheetBg').classList.add('hidden'); document.body.style.overflow = ''; F = null; }
+function hideSheet() { $('sheetBg').classList.add('hidden'); document.body.style.overflow = ''; F = null; _sheetStack = []; _sheetCur = null; }
+// 창을 모두 닫음 (× 버튼, 바깥 누르기, 삭제 후)
+function closeSheet() {
+  if (!sheetOpen()) return;
+  var depth = _sheetStack.length + 1;
+  hideSheet();
+  _ignorePop++;
+  history.go(-depth);
+}
+// 저장 후: 이전 창이 있으면 그 창으로(새 내용으로 다시 그림), 없으면 닫음
+function doneSheet() {
+  if (_sheetStack.length) history.back(); else closeSheet();
+}
 $('sheetBg').onclick = function (e) { if (e.target === $('sheetBg')) closeSheet(); };
 function opts(list, sel, empty) {
   return (empty ? '<option value="">' + esc(empty) + '</option>' : '') + list.map(function (o) {
@@ -559,7 +600,7 @@ function openPicker(sel, sync) {
     var el = document.createElement('div');
     el.id = 'pickBg'; el.className = 'pick-bg hidden';
     el.innerHTML = '<div class="pick-sheet"><div class="sheet-hd"><h3 id="pickTitle"></h3><button class="icon-btn" aria-label="닫기">×</button></div><ul id="pickList"></ul></div>';
-    el.onclick = function (e) { if (e.target === el || e.target.classList.contains('icon-btn')) el.classList.add('hidden'); };
+    el.onclick = function (e) { if (e.target === el || e.target.classList.contains('icon-btn')) closePicker(); };
     document.body.appendChild(el);
   }
   var lb = sel.closest('.field') && sel.closest('.field').querySelector('label');
@@ -572,13 +613,20 @@ function openPicker(sel, sync) {
     li.onclick = function () {
       sel.selectedIndex = +li.getAttribute('data-i');
       sync();
-      $('pickBg').classList.add('hidden');
+      closePicker();
       sel.dispatchEvent(new Event('change'));
     };
   });
   $('pickBg').classList.remove('hidden');
+  history.pushState({ tab: curTab, p: 1 }, '');
   var on = $('pickList').querySelector('.on');
   if (on) on.scrollIntoView({ block: 'center' });
+}
+function closePicker() {
+  if (!pickerOpen()) return;
+  $('pickBg').classList.add('hidden');
+  _ignorePop++;
+  history.back();
 }
 function segHtml(id, list, val) {
   return '<div class="seg" id="' + id + '">' + list.map(function (o) { return '<button type="button" data-v="' + o[0] + '" class="' + (o[0] === val ? 'on' : '') + '">' + o[1] + '</button>'; }).join('') + '</div>';
@@ -595,6 +643,7 @@ function textField(id, label, v, type, ph) {
 
 // 수입·지출·저축·대출상환 내역
 function openTx(id, preset) {
+  enterSheet(function () { openTx(id, preset); });
   var t = id ? Object.assign({ id: id }, D.tx[id]) : Object.assign({ type: 'expense', date: cur === today().slice(0, 7) ? today() : cur + '-01' }, preset || {});
   F = t;
   if (!id && t.type === 'loan' && t.loanId) fillLoanSplit();
@@ -670,15 +719,16 @@ function saveTx() {
   if (t.type === 'saving') { o.savingId = t.savingId; o.dir = t.dir === 'out' ? 'out' : 'in'; }
   if (t.type === 'loan') { o.loanId = t.loanId; o.principal = t.principal || 0; o.interest = t.interest || 0; }
   var id = t.id || newId();
-  save('tx/' + id, o).then(function () { closeSheet(); toast('저장했습니다'); });
+  save('tx/' + id, o).then(function () { doneSheet(); toast('저장했습니다'); });
 }
 function delTx() {
   if (!confirm('이 내역을 삭제할까요?')) return;
-  save('tx/' + F.id, null).then(function () { closeSheet(); toast('삭제했습니다'); });
+  save('tx/' + F.id, null).then(function () { doneSheet(); toast('삭제했습니다'); });
 }
 
 // 저축 통장
 function openSaving(id) {
+  enterSheet(function () { openSaving(id); });
   var s = id ? Object.assign({ id: id }, D.savings[id]) : { kind: '적금' };
   var h = '';
   if (id) {
@@ -689,7 +739,7 @@ function openSaving(id) {
       '<div class="asset-row"><span>시작 잔액</span><span>' + won(s.initial) + '</span></div>' +
       '<div class="asset-row"><span>입금 합계</span><span>' + won(inSum) + '</span></div>' +
       '<div class="asset-row"><span>출금 합계</span><span>' + won(outSum) + '</span></div></div>';
-    h += '<button class="btn block primary" style="margin:0 0 14px" onclick="closeSheet();openTx(null,{type:\'saving\',savingId:\'' + id + '\',amount:' + num(s.monthly) + '})">입금·출금 기록하기</button>';
+    h += '<button class="btn block primary" style="margin:0 0 14px" onclick="openTx(null,{type:\'saving\',savingId:\'' + id + '\',amount:' + num(s.monthly) + '})">입금·출금 기록하기</button>';
     if (hist.length) h += '<div class="field"><label>최근 기록</label><ul class="list">' + hist.slice(0, 8).map(txRow).join('') + '</ul></div>';
   }
   h += textField('svName', '이름', s.name, 'text', '예: 주택청약, 비상금 통장');
@@ -705,7 +755,7 @@ function saveSaving(id) {
   var o = { name: $('svName').value.trim(), kind: $('svKind').value, bank: $('svBank').value.trim(), initial: moneyVal($('svInitial')),
     monthly: moneyVal($('svMonthly')), target: moneyVal($('svTarget')), maturity: $('svMaturity').value, memo: $('svMemo').value.trim() };
   if (!o.name) { alert('이름을 입력해 주세요.'); return; }
-  save('savings/' + (id || newId()), o).then(function () { closeSheet(); toast('저장했습니다'); });
+  save('savings/' + (id || newId()), o).then(function () { doneSheet(); toast('저장했습니다'); });
 }
 function delSaving(id) {
   var n = txs().filter(function (t) { return t.savingId === id; }).length;
@@ -716,6 +766,7 @@ function delSaving(id) {
 // 대출: 상세 보기 (정보 · 상환 스케줄 · 상환 이력 · 금리 변경 이력)
 function openLoan(id) {
   if (!id) { editLoan(); return; }
+  enterSheet(function () { openLoan(id); });
   var l = Object.assign({ id: id }, D.loans[id]);
   var paid = loanPaid(l), bal = loanBalance(l), n = num(l.months), end = loanEnd(l);
   var k = Math.max(0, Math.min(loanPeriod(l, today().slice(0, 7)), n || 9999));
@@ -737,7 +788,7 @@ function openLoan(id) {
     (l.account ? row('출금 계좌', esc(l.account)) : '') +
     (l.earlyFee ? row('중도상환수수료', esc(l.earlyFee)) : '') +
     (l.memo ? row('메모', esc(l.memo)) : '') + '</div>';
-  h += '<div class="btns" style="margin:0 0 16px">' + (bal ? '<button class="btn primary" onclick="closeSheet();payLoan(\'' + id + '\',\'' + today().slice(0, 7) + '\')">상환 기록하기</button>' : '') +
+  h += '<div class="btns" style="margin:0 0 16px">' + (bal ? '<button class="btn primary" onclick="payLoan(\'' + id + '\',\'' + today().slice(0, 7) + '\')">상환 기록하기</button>' : '') +
     '<button class="btn" onclick="editLoan(\'' + id + '\')">정보 수정</button></div>';
 
   if (sched.length) {
@@ -757,6 +808,7 @@ function openLoan(id) {
 }
 // 대출: 정보 입력·수정
 function editLoan(id) {
+  enterSheet(function () { editLoan(id); });
   var l = id ? Object.assign({ id: id }, D.loans[id]) : { method: 'equal', rateType: 'fixed', kind: '주택담보대출', start: today() };
   var h = '';
   h += textField('lnName', '이름', l.name, 'text', '예: 아파트 주택담보대출');
@@ -792,7 +844,7 @@ function saveLoan(id) {
   o.rateLog = (old && old.rateLog) || {};
   if (old && num(old.rate) !== o.rate) o.rateLog[newId()] = { date: today(), from: num(old.rate), to: o.rate };
   var nid = id || newId();
-  save('loans/' + nid, o).then(function () { toast('저장했습니다'); if (id) openLoan(id); else closeSheet(); });
+  save('loans/' + nid, o).then(function () { toast('저장했습니다'); doneSheet(); });
 }
 function delLoan(id) {
   var n = txs().filter(function (t) { return t.loanId === id; }).length;
@@ -802,6 +854,7 @@ function delLoan(id) {
 
 // 매달 고정 항목
 function openRecur(id) {
+  enterSheet(function () { openRecur(id); });
   var r = id ? Object.assign({ id: id }, D.recurring[id]) : { type: 'expense', day: 25 };
   F = r;
   drawRecur();
@@ -841,11 +894,11 @@ function saveRecur() {
   if (r.type === 'expense') o.method = r.method || '';
   if (r.type === 'saving') o.savingId = r.savingId;
   if (r.type === 'loan') o.loanId = r.loanId;
-  save('recurring/' + (r.id || newId()), o).then(function () { closeSheet(); toast('저장했습니다'); });
+  save('recurring/' + (r.id || newId()), o).then(function () { doneSheet(); toast('저장했습니다'); });
 }
 function delRecur() {
   if (!confirm('이 고정 항목을 삭제할까요?\n이미 반영된 내역은 그대로 남습니다.')) return;
-  save('recurring/' + F.id, null).then(function () { closeSheet(); toast('삭제했습니다'); });
+  save('recurring/' + F.id, null).then(function () { doneSheet(); toast('삭제했습니다'); });
 }
 function applyRecurs() {
   var pend = pendingRecurs(cur);
