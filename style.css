@@ -105,6 +105,20 @@ button { font-family: inherit; font-size: inherit; cursor: pointer; }
 .input { width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font: inherit; background: #fff; color: var(--ink); }
 .input:focus { outline: 2px solid #c9d6f7; border-color: var(--pri); }
 textarea.input { resize: vertical; line-height: 1.5; }
+.input.pick { text-align: left; cursor: pointer; padding-right: 34px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a909c' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center; }
+.input.pick.empty { color: var(--muted); }
+.pick-bg { position: fixed; inset: 0; background: rgba(15,20,30,.35); z-index: 40; display: flex; align-items: flex-end; justify-content: center; }
+.pick-sheet { background: #fff; width: 100%; max-width: 560px; max-height: 70vh; overflow-y: auto; border-radius: 18px 18px 0 0; padding: 6px 12px calc(12px + env(safe-area-inset-bottom)); }
+@media (min-width: 600px) { .pick-bg { align-items: center; } .pick-sheet { border-radius: 18px; max-width: 420px; } }
+.pick-sheet .sheet-hd { padding: 8px 6px; }
+#pickList { list-style: none; margin: 0; padding: 0; }
+#pickList li { display: flex; align-items: center; justify-content: space-between; padding: 13px 12px; border-radius: 10px; cursor: pointer; font-size: 15.5px; }
+#pickList li:hover { background: #f4f6fa; }
+#pickList li svg { visibility: hidden; color: var(--pri); flex: none; }
+#pickList li.on { background: #eef3ff; color: var(--pri); font-weight: 700; }
+#pickList li.on svg { visibility: visible; }
+#pickList li.none { color: var(--muted); }
 .input.money { font-size: 20px; font-weight: 700; text-align: right; }
 .seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: #eef0f3; border-radius: 10px; padding: 3px; margin-bottom: 14px; }
 .seg button { border: 0; background: transparent; border-radius: 8px; padding: 8px 0; font-weight: 600; color: #555b66; }

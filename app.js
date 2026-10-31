@@ -371,6 +371,7 @@ function saveBudget() {
 function openSheet(title, html) {
   $('sheetTitle').textContent = title;
   $('sheetBody').innerHTML = html;
+  $('sheetBody').querySelectorAll('select').forEach(prettySelect);
   $('sheetBg').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
 }
@@ -381,6 +382,43 @@ function opts(list, sel, empty) {
     var v = typeof o === 'object' ? o.v : o, t = typeof o === 'object' ? o.t : o;
     return '<option value="' + esc(v) + '"' + (String(v) === String(sel == null ? '' : sel) ? ' selected' : '') + '>' + esc(t) + '</option>';
   }).join('');
+}
+// 선택 칸: 휴대폰 기본 선택 창 대신 앱 디자인의 선택 창. 원래 <select>는 숨겨 두고 값 저장용으로 그대로 사용
+function prettySelect(sel) {
+  var btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'input pick';
+  sel.parentNode.insertBefore(btn, sel);
+  sel.classList.add('hidden');
+  function sync() { var o = sel.options[sel.selectedIndex]; btn.textContent = o ? o.text : ''; btn.classList.toggle('empty', !sel.value); }
+  btn.onclick = function () { openPicker(sel, sync); };
+  sync();
+}
+function openPicker(sel, sync) {
+  if (!$('pickBg')) {
+    var el = document.createElement('div');
+    el.id = 'pickBg'; el.className = 'pick-bg hidden';
+    el.innerHTML = '<div class="pick-sheet"><div class="sheet-hd"><h3 id="pickTitle"></h3><button class="icon-btn" aria-label="닫기">×</button></div><ul id="pickList"></ul></div>';
+    el.onclick = function (e) { if (e.target === el || e.target.classList.contains('icon-btn')) el.classList.add('hidden'); };
+    document.body.appendChild(el);
+  }
+  var lb = sel.closest('.field') && sel.closest('.field').querySelector('label');
+  $('pickTitle').textContent = lb ? lb.childNodes[0].textContent.trim() + ' 선택' : '선택';
+  $('pickList').innerHTML = Array.prototype.map.call(sel.options, function (o, i) {
+    return '<li data-i="' + i + '" class="' + (i === sel.selectedIndex ? 'on' : '') + (o.value ? '' : ' none') + '"><span>' + esc(o.text) + '</span>' +
+      '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></li>';
+  }).join('');
+  Array.prototype.forEach.call($('pickList').children, function (li) {
+    li.onclick = function () {
+      sel.selectedIndex = +li.getAttribute('data-i');
+      sync();
+      $('pickBg').classList.add('hidden');
+      sel.dispatchEvent(new Event('change'));
+    };
+  });
+  $('pickBg').classList.remove('hidden');
+  var on = $('pickList').querySelector('.on');
+  if (on) on.scrollIntoView({ block: 'center' });
 }
 function segHtml(id, list, val) {
   return '<div class="seg" id="' + id + '">' + list.map(function (o) { return '<button type="button" data-v="' + o[0] + '" class="' + (o[0] === val ? 'on' : '') + '">' + o[1] + '</button>'; }).join('') + '</div>';
