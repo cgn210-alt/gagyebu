@@ -2,13 +2,13 @@
 // Firebase 콘솔 > 프로젝트 설정 > 내 앱(웹)에 나오는 값을 그대로 붙여 넣으세요.
 // 비워 두면 '이 기기에만 저장' 모드로만 쓸 수 있습니다.
 var FIREBASE_CONFIG = {
-  apiKey:            "",
-  authDomain:        "",
-  databaseURL:       "",
-  projectId:         "",
-  storageBucket:     "",
-  messagingSenderId: "",
-  appId:             ""
+  apiKey:            "AIzaSyA8pK2OfpcxjjmCoEaLQdzdlMCj-uLC-Ao",
+  authDomain:        "gagyebu-fe423.firebaseapp.com",
+  databaseURL:       "https://gagyebu-fe423-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:         "gagyebu-fe423",
+  storageBucket:     "gagyebu-fe423.firebasestorage.app",
+  messagingSenderId: "279335703790",
+  appId:             "1:279335703790:web:217889c9b9be44fdde4fff"
 };
 
 // 이 계정만 로그인해서 쓸 수 있습니다
