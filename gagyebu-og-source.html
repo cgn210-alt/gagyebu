@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<!-- 카카오톡 썸네일 원본 (1200x630). gagyebu-og.png 로 캡처해서 사용 -->
+<!-- 앱과 같은 색: 파랑 바탕, 수입(파랑)·지출(빨강)·저축(초록)·대출(주황) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1200px; height: 630px; overflow: hidden; }
+  body { font-family: Pretendard, 'Malgun Gothic', sans-serif; color: #fff; position: relative;
+    background: radial-gradient(ellipse at 20% 20%, #4a74e6 0%, #2f5bd3 45%, #1f3f9e 100%); }
+  .ring { position: absolute; border-radius: 50%; border: 2px solid rgba(255,255,255,.08); }
+  .text { position: absolute; left: 90px; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: center; }
+  .eyebrow { font-size: 26px; font-weight: 600; color: #c9d6ff; letter-spacing: 1px; }
+  h1 { font-size: 92px; font-weight: 800; letter-spacing: -1px; margin-top: 14px; line-height: 1.1; }
+  p { font-size: 30px; color: #dfe7ff; margin-top: 26px; font-weight: 500; line-height: 1.5; }
+  .card { position: absolute; right: 90px; top: 105px; width: 400px; height: 420px; background: #fff; border-radius: 28px;
+    box-shadow: 0 24px 60px rgba(10,25,80,.35); padding: 40px 38px; color: #1f2430; }
+  .card .hd { font-size: 22px; color: #8a909c; font-weight: 600; }
+  .card .big { height: 22px; width: 230px; background: #1f2430; border-radius: 6px; margin: 14px 0 28px; }
+  .row { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; font-size: 24px; font-weight: 700; }
+  .row .ic { width: 46px; height: 46px; border-radius: 13px; flex: none; }
+  .row .tr { flex: 1; height: 14px; background: #eef0f3; border-radius: 7px; overflow: hidden; }
+  .row .tr i { display: block; height: 100%; border-radius: 7px; }
+  .row .lb { width: 62px; }
+</style>
+</head>
+<body>
+  <div class="ring" style="width:520px;height:520px;left:-160px;top:-220px"></div>
+  <div class="ring" style="width:700px;height:700px;right:-260px;bottom:-380px"></div>
+  <div class="text">
+    <div class="eyebrow">수입 · 지출 · 저축 · 대출</div>
+    <h1>생활 가계부</h1>
+    <p>한 달 살림과 저축·대출 잔액을<br>한눈에 정리합니다</p>
+  </div>
+  <div class="card">
+    <div class="hd">이번 달 남은 돈</div>
+    <div class="big"></div>
+    <div class="row"><span class="ic" style="background:#e3ecff"></span><span class="lb" style="color:#2563eb">수입</span><span class="tr"><i style="width:92%;background:#2563eb"></i></span></div>
+    <div class="row"><span class="ic" style="background:#fde8e6"></span><span class="lb" style="color:#e0453a">지출</span><span class="tr"><i style="width:58%;background:#e0453a"></i></span></div>
+    <div class="row"><span class="ic" style="background:#e1f5e7"></span><span class="lb" style="color:#16a34a">저축</span><span class="tr"><i style="width:34%;background:#16a34a"></i></span></div>
+    <div class="row"><span class="ic" style="background:#fdf0dc"></span><span class="lb" style="color:#d97706">대출</span><span class="tr"><i style="width:44%;background:#d97706"></i></span></div>
+  </div>
+</body>
+</html>
