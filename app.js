@@ -478,15 +478,19 @@ function renderStats() {
     return '<div class="m' + (d.m === today().slice(0, 7) ? ' cur' : '') + '"><div class="cols">' + col('income') + col('expense') + col('saving') + '</div><div class="lb">' + (+d.m.slice(5)) + '</div></div>';
   }).join('');
 
-  $('statTable').innerHTML = '<table class="tbl stat-tbl"><thead><tr><th>월</th><th>수입</th><th>지출</th><th>저축</th><th>대출상환</th><th>남은 돈</th></tr></thead><tbody>' +
+  // 휴대폰 화면에서는 옆으로 밀지 않고 보이도록 만원 단위로 표시
+  var narrow = window.innerWidth < 600;
+  var f = narrow ? function (n) { return (Math.round(num(n) / 1000) / 10).toLocaleString('ko-KR', { maximumFractionDigits: 1 }); } : comma;
+  $('statUnit').textContent = narrow ? '단위: 만원 · 월을 누르면 그 달 내역' : '단위: 원 · 월을 누르면 그 달 내역';
+  $('statTable').innerHTML = '<table class="tbl stat-tbl"><thead><tr><th>월</th><th>수입</th><th>지출</th><th>저축</th><th>' + (narrow ? '상환' : '대출상환') + '</th><th>남은 돈</th></tr></thead><tbody>' +
     mon.map(function (d) {
       var empty = !(d.income || d.expense || d.saving || d.loan);
       return '<tr class="' + (empty ? 'dim' : '') + '" onclick="cur=\'' + d.m + '\';renderAll();setTab(\'list\')"><td>' + (+d.m.slice(5)) + '월</td>' +
-        '<td class="c-income">' + comma(d.income) + '</td><td class="c-expense">' + comma(d.expense) + '</td><td class="c-saving">' + comma(d.saving) + '</td><td class="c-loan">' + comma(d.loan) + '</td>' +
-        '<td class="' + (d.left < 0 ? 'c-expense' : '') + '">' + comma(d.left) + '</td></tr>';
+        '<td class="c-income">' + f(d.income) + '</td><td class="c-expense">' + f(d.expense) + '</td><td class="c-saving">' + f(d.saving) + '</td><td class="c-loan">' + f(d.loan) + '</td>' +
+        '<td class="' + (d.left < 0 ? 'c-expense' : '') + '">' + f(d.left) + '</td></tr>';
     }).join('') +
-    '</tbody><tfoot><tr><td>합계</td><td>' + comma(tot.income) + '</td><td>' + comma(tot.expense) + '</td><td>' + comma(tot.saving) + '</td><td>' + comma(tot.loan) + '</td><td>' + comma(tot.left) + '</td></tr>' +
-    '<tr><td>월평균</td><td>' + comma(tot.income / nMon) + '</td><td>' + comma(tot.expense / nMon) + '</td><td>' + comma(tot.saving / nMon) + '</td><td>' + comma(tot.loan / nMon) + '</td><td>' + comma(tot.left / nMon) + '</td></tr></tfoot></table>';
+    '</tbody><tfoot><tr><td>합계</td><td>' + f(tot.income) + '</td><td>' + f(tot.expense) + '</td><td>' + f(tot.saving) + '</td><td>' + f(tot.loan) + '</td><td>' + f(tot.left) + '</td></tr>' +
+    '<tr><td>평균</td><td>' + f(tot.income / nMon) + '</td><td>' + f(tot.expense / nMon) + '</td><td>' + f(tot.saving / nMon) + '</td><td>' + f(tot.loan / nMon) + '</td><td>' + f(tot.left / nMon) + '</td></tr></tfoot></table>';
 
   $('statExp').innerHTML = catTable(list, 'expense', tot.expense, nMon);
   $('statInc').innerHTML = catTable(list, 'income', tot.income, nMon);
@@ -911,5 +915,12 @@ function restoreJSON(input) {
   };
   rd.readAsText(f);
 }
+
+// 화면 폭이 600px 기준을 넘나들면 통계표 단위(원/만원)를 다시 그림
+var _narrow = window.innerWidth < 600;
+window.addEventListener('resize', function () {
+  var n = window.innerWidth < 600;
+  if (n !== _narrow) { _narrow = n; if ($('statUnit')) renderStats(); }
+});
 
 init();
