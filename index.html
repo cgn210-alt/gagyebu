@@ -15,7 +15,7 @@
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
-<link rel="stylesheet" href="style.css?v=2">
+<link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
 
@@ -117,9 +117,31 @@
       <h2>저축 <button class="btn sm" onclick="openSaving()">+ 저축 통장 추가</button></h2>
       <ul class="list" id="savingList"></ul>
     </div>
+  </div>
+
+  <!-- 대출 대시보드 -->
+  <div class="wrap hidden" id="tab-loan">
+    <div class="card sum-card">
+      <div class="sum-main">
+        <span class="muted">대출 잔액 합계</span>
+        <b class="c-loan" id="loanSumBal">0원</b>
+        <div class="track" style="margin-top:8px"><i class="ln" id="loanSumBar" style="width:0"></i></div>
+        <small class="muted" id="loanSumPct"></small>
+      </div>
+      <div class="sum-grid">
+        <div>이번 달 상환액<b id="loanSumPlan">0</b></div>
+        <div>이번 달 완료<b id="loanSumPaid">-</b></div>
+        <div><span id="loanYearLabel"></span> 낸 이자<b id="loanSumYInt">0</b></div>
+        <div><span id="loanYearLabel2"></span> 갚은 원금<b id="loanSumYPrin">0</b></div>
+      </div>
+    </div>
     <div class="card">
-      <h2>대출 <button class="btn sm" onclick="openLoan()">+ 대출 추가</button></h2>
-      <ul class="list" id="loanList"></ul>
+      <h2 id="loanCheckTitle">상환 체크</h2>
+      <div id="loanCheck"></div>
+    </div>
+    <div class="card">
+      <h2>대출 목록 <button class="btn sm" onclick="openLoan()">+ 대출 추가</button></h2>
+      <div id="loanList"></div>
     </div>
   </div>
 
@@ -167,7 +189,8 @@
   <nav class="tabbar">
     <button data-tab="home" class="on">홈</button>
     <button data-tab="list">내역</button>
-    <button data-tab="assets">저축·대출</button>
+    <button data-tab="assets">저축</button>
+    <button data-tab="loan">대출</button>
     <button data-tab="plan">고정·예산</button>
     <button data-tab="set">설정</button>
   </nav>
@@ -187,6 +210,6 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="app.js?v=2"></script>
+<script src="app.js?v=3"></script>
 </body>
 </html>
